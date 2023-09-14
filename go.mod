@@ -8,6 +8,7 @@ require (
 )
 
 require (
+	github.com/go-chi/chi/v5 v5.0.10 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect

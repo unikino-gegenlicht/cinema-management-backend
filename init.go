@@ -53,12 +53,15 @@ func init() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("unable to connect to the mongodb")
 	}
+	log.Info().Msg("connected to the mongodb")
 
 	// now ping the database to verify the connection
+	log.Info().Msg("validating connection")
 	err = client.Ping(context.TODO(), nil)
 	if err != nil {
 		log.Fatal().Err(err).Msg("mongodb server not reachable")
 	}
+	log.Info().Msg("connection validated")
 
 	// now configure the connection to the cinema_management database
 	database.Database = client.Database("cinema_management")
