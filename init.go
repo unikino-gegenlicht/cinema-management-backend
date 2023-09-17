@@ -7,15 +7,18 @@ package main
 
 import (
 	"context"
+	"errors"
+	"github.com/pelletier/go-toml/v2"
 	"github.com/rs/zerolog/log"
 	"github.com/unikino-gegenlicht/cinema-management-backend/database"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"io/fs"
 	"os"
+	"strings"
 )
 import (
 	"github.com/rs/zerolog"
-
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // this function initializes the backend before the main function is executed
@@ -37,34 +40,64 @@ func init() {
 	// now set up the logger
 	zerolog.SetGlobalLevel(loggingLevel)
 
-	// since the logger is now set up, try to receive the mongodb url from the
-	// environment
-	mongoDbUri, mongoDbUriSet := os.LookupEnv("MONGODB_URI")
-	if !mongoDbUriSet {
-		log.Fatal().Msg("the mongo db uri has not been set. please check your environment")
+	// since the logger is configured, start reading the configuration file
+	configurationFile, err := os.OpenFile("./config.toml", os.O_RDONLY, 0660)
+	// now check if the error indicated that there is no configuration file
+	// found
+	if errors.Is(err, fs.ErrNotExist) {
+		// since there is no configuration file to be found, exit the backend
+		// with a fatal error
+		log.Fatal().Msg("no configuration file found. please check the documentation")
+	}
+	// since the configuration file exists, read the configuration
+	err = toml.NewDecoder(configurationFile).Decode(&configuration)
+	if err != nil {
+		log.Error().Err(err).Msg("unable to read configuration file")
+		os.Exit(1)
 	}
 
-	// now parse the mongodb uri
-	mongoOptions := options.Client().ApplyURI(mongoDbUri)
+	// now check if the open id connect configuration should utilize the
+	// automatic discovery process
+	if configuration.OpenIdConnect.UseDiscovery {
+		err = configuration.OpenIdConnect.Discover()
+		if err != nil {
+			log.Fatal().Err(err).Msg("unable to discover open id configuration")
+		}
+	}
+
+	// now check the endpoints in the configuration
+	if configuration.OpenIdConnect.UserinfoEndpointUri == nil {
+		log.Fatal().Msg("empty userinfo endpoint in configuration")
+	}
+	if configuration.OpenIdConnect.JWKSEndpointUri == nil {
+		log.Fatal().Msg("empty jwks endpoint in configuration")
+	}
+
+	// now check that the mongo db uri is not empty
+	if strings.TrimSpace(configuration.MongoDbUri) == "" {
+		log.Fatal().Msg("empty mongodb-uri in configuration")
+	}
+
+	// since the configuration has been validated, connect to the mongodb
+	mongoOptions := options.Client().ApplyURI(configuration.MongoDbUri)
 	mongoOptions.SetAppName("cinema-management-backend")
 
-	// now connect to the mongodb server
-	client, err := mongo.Connect(context.TODO(), mongoOptions)
+	// now connect to the database
+	mongoClient, err := mongo.Connect(context.TODO(), mongoOptions)
 	if err != nil {
-		log.Fatal().Err(err).Msg("unable to connect to the mongodb")
+		log.Fatal().Err(err).Msg("unable to connect to database")
 	}
-	log.Info().Msg("connected to the mongodb")
 
-	// now ping the database to verify the connection
-	log.Info().Msg("validating connection")
-	err = client.Ping(context.TODO(), nil)
+	// now check the connection by a ping
+	err = mongoClient.Ping(context.TODO(), nil)
 	if err != nil {
-		log.Fatal().Err(err).Msg("mongodb server not reachable")
+		log.Fatal().Err(err).Msg("database did not answer to ping")
 	}
-	log.Info().Msg("connection validated")
 
-	// now configure the connection to the cinema_management database
-	database.Database = client.Database("cinema_management")
+	// now get the database for the client
+	database.Database = mongoClient.Database("cinema-management")
 
-	// and that's it in initialization for the backends
+	// now the init process is done
+	log.Info().Msg("startup validation done")
+
 }
