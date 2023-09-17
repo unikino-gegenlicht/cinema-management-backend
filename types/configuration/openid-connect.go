@@ -114,7 +114,7 @@ func (c *OpenIDConnectConfiguration) Discover() error {
 	// since the issuer has been extracted, set it in the configuration
 	c.JWKSEndpointUri = &jwksUri
 
-	rawUserinfoEndpoint, userinfoEndpointSet := discoveryResult["jwks_uri"]
+	rawUserinfoEndpoint, userinfoEndpointSet := discoveryResult["userinfo_endpoint"]
 	if !userinfoEndpointSet {
 		return errNoUserinfoUriDiscovered
 	}
