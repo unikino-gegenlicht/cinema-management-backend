@@ -197,7 +197,7 @@ func OpenIDConnectJWTAuthentication(config configurationTypes.OpenIDConnectConfi
 
 			// now check the groups the user is a member of the userinfo
 			// response and has the correct type
-			groups, isSet := userinfo["groups"].([]string)
+			groups, isSet := userinfo["groups"].([]interface{})
 			if !isSet {
 				log.Warn().Msg("no groups in userinfo response found with type []string")
 				goto setContext

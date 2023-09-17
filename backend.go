@@ -8,11 +8,16 @@ package main
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog/log"
+	"github.com/unikino-gegenlicht/cinema-management-backend/middleware"
+	registerRoutes "github.com/unikino-gegenlicht/cinema-management-backend/routes/register"
+	configurationTypes "github.com/unikino-gegenlicht/cinema-management-backend/types/configuration"
 	"net/http"
 	"os"
 	"os/signal"
 )
 import chiMiddleware "github.com/go-chi/chi/v5/middleware"
+
+var configuration configurationTypes.Configuration
 
 func main() {
 	// to manage the different backend routes, create a new router
@@ -22,11 +27,10 @@ func main() {
 	mainRouter.Use(chiMiddleware.RealIP)
 	mainRouter.Use(chiMiddleware.RequestID)
 
-	// TODO: Implement middleware for authentication using a OpenID connect
-	//  userinfo endpoint
+	mainRouter.Use(middleware.OpenIDConnectJWTAuthentication(configuration.OpenIdConnect))
 
 	// now mount the different sub-routers that are maintained in this file
-	mainRouter.Mount("/registers", registerRouter())
+	mainRouter.Mount("/registers", registerRoutes.Router())
 	mainRouter.Mount("/transactions", transactionRouter())
 
 	// now create a http server
@@ -52,13 +56,6 @@ func main() {
 	<-cancelSignal
 
 	log.Info().Msg("shutting down backend")
-}
-
-func registerRouter() http.Handler {
-	// create a new router
-	r := chi.NewRouter()
-	// todo: implement routes related to the registers and add them here
-	return r
 }
 
 func transactionRouter() http.Handler {
