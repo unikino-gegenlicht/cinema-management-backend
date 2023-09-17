@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog/log"
 	"github.com/unikino-gegenlicht/cinema-management-backend/middleware"
+	itemRoutes "github.com/unikino-gegenlicht/cinema-management-backend/routes/items"
 	registerRoutes "github.com/unikino-gegenlicht/cinema-management-backend/routes/register"
 	configurationTypes "github.com/unikino-gegenlicht/cinema-management-backend/types/configuration"
 	"net/http"
@@ -31,7 +32,7 @@ func main() {
 
 	// now mount the different sub-routers that are maintained in this file
 	mainRouter.Mount("/registers", registerRoutes.Router())
-	mainRouter.Mount("/transactions", transactionRouter())
+	mainRouter.Mount("/items", itemRoutes.Router())
 
 	// now create a http server
 	server := &http.Server{
@@ -56,11 +57,4 @@ func main() {
 	<-cancelSignal
 
 	log.Info().Msg("shutting down backend")
-}
-
-func transactionRouter() http.Handler {
-	// create a new router
-	r := chi.NewRouter()
-	// todo: implement routes related to transactions and add them here
-	return r
 }
