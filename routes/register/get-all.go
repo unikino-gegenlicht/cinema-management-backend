@@ -14,9 +14,9 @@ import (
 	"net/http"
 )
 
-// GetAll implements the call to the mongo db that outputs all
+// allRegisters implements the call to the mongo db that outputs all
 // registers currently available
-func _GetAll(w http.ResponseWriter, r *http.Request) {
+func allRegisters(w http.ResponseWriter, r *http.Request) {
 	collection := database.Database.Collection("registers")
 	// since getting all registers is not a protected action. just query the
 	// collection

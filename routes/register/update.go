@@ -17,7 +17,7 @@ import (
 	"net/http"
 )
 
-func _Update(w http.ResponseWriter, r *http.Request) {
+func updateRegister(w http.ResponseWriter, r *http.Request) {
 	// extract the register id from the url
 	stringRegisterId := chi.URLParam(r, "registerId")
 	// convert the string into a object id
@@ -50,6 +50,6 @@ func _Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// now just get the single register
-	_GetOne(w, r)
+	oneRegister(w, r)
 	return
 }

@@ -18,7 +18,7 @@ import (
 	"net/http"
 )
 
-func _GetOne(w http.ResponseWriter, r *http.Request) {
+func oneRegister(w http.ResponseWriter, r *http.Request) {
 	// extract the register id from the url
 	stringRegisterId := chi.URLParam(r, "registerId")
 	// convert the string into a object id

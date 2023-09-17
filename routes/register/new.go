@@ -16,7 +16,7 @@ import (
 	"net/http"
 )
 
-func _NewRegister(w http.ResponseWriter, r *http.Request) {
+func newRegister(w http.ResponseWriter, r *http.Request) {
 	// parse the body of the request which should contain a register definition
 	var register types.Register
 	err := json.NewDecoder(r.Body).Decode(&register)

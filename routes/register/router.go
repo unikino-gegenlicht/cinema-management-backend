@@ -7,15 +7,17 @@ package registerRoutes
 
 import (
 	"github.com/go-chi/chi/v5"
+	"github.com/unikino-gegenlicht/cinema-management-backend/middleware"
 	"net/http"
 )
 
 func Router() http.Handler {
 	// create a new router
 	r := chi.NewRouter()
-	r.Get("/all", _GetAll)
-	r.Get("/{registerId}", _GetOne)
-	r.Post("/new", _NewRegister)
-	r.Patch("/{registerId}", _Update)
+	r.Use(middleware.AppendMongoCollection("registers"))
+	r.Get("/", allRegisters)
+	r.Post("/", newRegister)
+	r.Get("/{registerId}", oneRegister)
+	r.Patch("/{registerId}", updateRegister)
 	return r
 }
