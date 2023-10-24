@@ -17,11 +17,8 @@ import (
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
-	"go.mongodb.org/mongo-driver/bson"
 
-	"github.com/unikino-gegenlicht/cinema-management-backend/database"
 	configurationTypes "github.com/unikino-gegenlicht/cinema-management-backend/types/configuration"
 )
 
@@ -147,105 +144,79 @@ func OpenIDConnectJWTAuthentication(config configurationTypes.OpenIDConnectConfi
 
 			// now check if the token already has been inspected one
 			var info userInfo
-			rawUserinfo, err := database.RedisClient.Get(r.Context(), rawAccessToken).Bytes()
-
-			if err != nil && err == redis.Nil {
-				info = userInfo{}
-				req, err := http.NewRequest("GET", *config.UserinfoEndpointUri, nil)
-				if err != nil {
-					log.Error().Err(err).Msg("unable to build request for userinfo endpoint")
-					w.WriteHeader(500)
-					return
-				}
-				req.Header.Set("Authorization", headerValues[0])
-
-				// now execute the request
-				httpClient := http.Client{}
-				res, err = httpClient.Do(req)
-				if err != nil {
-					log.Error().Err(err).Msg("unable to request userinfo endpoint")
-					w.WriteHeader(500)
-					return
-				}
-
-				// now parse the response
-				var userinfo map[string]interface{}
-				err = json.NewDecoder(res.Body).Decode(&userinfo)
-				if err != nil {
-					log.Error().Err(err).Msg("unable to parse userinfo response")
-					w.WriteHeader(500)
-					return
-				}
-
-				// now check the userinfo response for the following fields:
-				//   - sub [the subject the userinfo is for]
-				//   - preferred_username [the username of the user]
-				//   - name [the name of the user]
-				//   - groups [the groups the user is a member of]
-				subject, isSet := userinfo["sub"].(string)
-				if !isSet {
-					log.Error().Msg("userinfo response did not contain the subject the userinfo is issued for")
-					w.WriteHeader(500)
-					return
-				}
-				// now validate that the userinfo is issued for the same subject
-				// as the jwt
-				if accessToken.Subject() != subject {
-					w.WriteHeader(401)
-					return
-				}
-
-				// now get the username and real name of the user accessing
-				// the backend
-				username, isSet := userinfo["preferred_username"].(string)
-				if !isSet {
-					log.Warn().Msg("user not identifiable, disallowing access")
-					w.WriteHeader(500)
-					return
-				}
-				info.Username = username
-
-				// now get the full name
-				fullName, isSet := userinfo["name"].(string)
-				if !isSet {
-					log.Warn().Msg("user not identifiable, disallowing access")
-					w.WriteHeader(500)
-					return
-				}
-				info.FullName = fullName
-
-				// now check the groups the user is a member of the userinfo
-				// response and has the correct type
-				groups, isSet := userinfo["groups"].([]interface{})
-				if !isSet {
-					log.Warn().Msg("no groups in userinfo response found with type []interface{}")
-					goto setContext
-				}
-				info.Groups = groups
-				// todo write object into database
-				ttl := accessToken.Expiration().Sub(time.Now())
-				// now convert the userinfo into bson
-				encodedUserInfo, err := bson.Marshal(info)
-				if err != nil {
-					goto setContext
-				}
-				// now write the data to redis
-				err = database.RedisClient.Set(r.Context(), rawAccessToken, encodedUserInfo, ttl).Err()
-				if err != nil {
-					goto setContext
-				}
-			} else if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
+			info = userInfo{}
+			req, err := http.NewRequest("GET", *config.UserinfoEndpointUri, nil)
+			if err != nil {
+				log.Error().Err(err).Msg("unable to build request for userinfo endpoint")
+				w.WriteHeader(500)
 				return
-			} else {
-				err = bson.Unmarshal(rawUserinfo, &info)
-				if err != nil {
-					w.WriteHeader(http.StatusInternalServerError)
-					return
-				}
+			}
+			req.Header.Set("Authorization", headerValues[0])
+
+			// now execute the request
+			httpClient := http.Client{}
+			res, err = httpClient.Do(req)
+			if err != nil {
+				log.Error().Err(err).Msg("unable to request userinfo endpoint")
+				w.WriteHeader(500)
+				return
 			}
 
-		setContext:
+			// now parse the response
+			var userinfo map[string]interface{}
+			err = json.NewDecoder(res.Body).Decode(&userinfo)
+			if err != nil {
+				log.Error().Err(err).Msg("unable to parse userinfo response")
+				w.WriteHeader(500)
+				return
+			}
+
+			// now check the userinfo response for the following fields:
+			//   - sub [the subject the userinfo is for]
+			//   - preferred_username [the username of the user]
+			//   - name [the name of the user]
+			//   - groups [the groups the user is a member of]
+			subject, isSet := userinfo["sub"].(string)
+			if !isSet {
+				log.Error().Msg("userinfo response did not contain the subject the userinfo is issued for")
+				w.WriteHeader(500)
+				return
+			}
+			// now validate that the userinfo is issued for the same subject
+			// as the jwt
+			if accessToken.Subject() != subject {
+				w.WriteHeader(401)
+				return
+			}
+
+			// now get the username and real name of the user accessing
+			// the backend
+			username, isSet := userinfo["preferred_username"].(string)
+			if !isSet {
+				log.Warn().Msg("user not identifiable, disallowing access")
+				w.WriteHeader(500)
+				return
+			}
+			info.Username = username
+
+			// now get the full name
+			fullName, isSet := userinfo["name"].(string)
+			if !isSet {
+				log.Warn().Msg("user not identifiable, disallowing access")
+				w.WriteHeader(500)
+				return
+			}
+			info.FullName = fullName
+
+			// now check the groups the user is a member of the userinfo
+			// response and has the correct type
+			groups, isSet := userinfo["groups"].([]interface{})
+			if !isSet {
+				log.Warn().Msg("no groups in userinfo response found with type []interface{}")
+			}
+			info.Groups = groups
+			// todo write object into database
+
 			// now add the collected values to the context
 			ctx := context.WithValue(r.Context(), "username", info.Username)
 			ctx = context.WithValue(ctx, "fullName", info.FullName)
