@@ -11,6 +11,7 @@ import (
 	"github.com/unikino-gegenlicht/cinema-management-backend/middleware"
 	itemRoutes "github.com/unikino-gegenlicht/cinema-management-backend/routes/items"
 	registerRoutes "github.com/unikino-gegenlicht/cinema-management-backend/routes/register"
+	"github.com/unikino-gegenlicht/cinema-management-backend/routes/transactions"
 	configurationTypes "github.com/unikino-gegenlicht/cinema-management-backend/types/configuration"
 	"net/http"
 	"os"
@@ -29,10 +30,10 @@ func main() {
 	mainRouter.Use(chiMiddleware.RequestID)
 
 	mainRouter.Use(middleware.OpenIDConnectJWTAuthentication(configuration.OpenIdConnect))
-
 	// now mount the different sub-routers that are maintained in this file
 	mainRouter.Mount("/registers", registerRoutes.Router())
 	mainRouter.Mount("/items", itemRoutes.Router())
+	mainRouter.Mount("/transactions", transactionRoutes.Router())
 
 	// now create a http server
 	server := &http.Server{

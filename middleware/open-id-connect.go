@@ -9,15 +9,27 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jwt"
-	"github.com/rs/zerolog/log"
-	configurationTypes "github.com/unikino-gegenlicht/cinema-management-backend/types/configuration"
+	"io"
 	"net/http"
 	"regexp"
 	"slices"
 	"time"
+
+	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog/log"
+	"go.mongodb.org/mongo-driver/bson"
+
+	"github.com/unikino-gegenlicht/cinema-management-backend/database"
+	configurationTypes "github.com/unikino-gegenlicht/cinema-management-backend/types/configuration"
 )
+
+type userInfo struct {
+	FullName string        `bson:"fullName"`
+	Username string        `bson:"username"`
+	Groups   []interface{} `bson:"groups"`
+}
 
 // OpenIDConnectJWTAuthentication uses the Access Token present in the request
 // headers to authenticate and check the authorization of the user making a
@@ -64,8 +76,9 @@ func OpenIDConnectJWTAuthentication(config configurationTypes.OpenIDConnectConfi
 				w.WriteHeader(500)
 				return
 			}
+			rawJWKS, err := io.ReadAll(res.Body)
 			// now parse the response body into the jwks
-			jwks, err := jwk.ParseReader(res.Body)
+			jwks, err := jwk.Parse(rawJWKS)
 			if err != nil {
 				// todo: handle the error better
 				log.Error().Err(err).Msg("unable to parse jwks from open id provider")
@@ -132,83 +145,112 @@ func OpenIDConnectJWTAuthentication(config configurationTypes.OpenIDConnectConfi
 				return
 			}
 
-			// now request the userinfo endpoint using the access token
-			// as authorization header
-			req, err := http.NewRequest("GET", *config.UserinfoEndpointUri, nil)
-			if err != nil {
-				log.Error().Err(err).Msg("unable to build request for userinfo endpoint")
-				w.WriteHeader(500)
-				return
-			}
-			req.Header.Set("Authorization", headerValues[0])
+			// now check if the token already has been inspected one
+			var info userInfo
+			rawUserinfo, err := database.RedisClient.Get(r.Context(), rawAccessToken).Bytes()
 
-			// now execute the request
-			httpClient := http.Client{}
-			res, err = httpClient.Do(req)
-			if err != nil {
-				log.Error().Err(err).Msg("unable to request userinfo endpoint")
-				w.WriteHeader(500)
-				return
-			}
+			if err != nil && err == redis.Nil {
+				info = userInfo{}
+				req, err := http.NewRequest("GET", *config.UserinfoEndpointUri, nil)
+				if err != nil {
+					log.Error().Err(err).Msg("unable to build request for userinfo endpoint")
+					w.WriteHeader(500)
+					return
+				}
+				req.Header.Set("Authorization", headerValues[0])
 
-			// now parse the response
-			var userinfo map[string]interface{}
-			err = json.NewDecoder(res.Body).Decode(&userinfo)
-			if err != nil {
-				log.Error().Err(err).Msg("unable to parse userinfo response")
-				w.WriteHeader(500)
-				return
-			}
+				// now execute the request
+				httpClient := http.Client{}
+				res, err = httpClient.Do(req)
+				if err != nil {
+					log.Error().Err(err).Msg("unable to request userinfo endpoint")
+					w.WriteHeader(500)
+					return
+				}
 
-			// now check the userinfo response for the following fields:
-			//   - sub [the subject the userinfo is for]
-			//   - preferred_username [the username of the user]
-			//   - name [the name of the user]
-			//   - groups [the groups the user is a member of]
-			subject, isSet := userinfo["sub"].(string)
-			if !isSet {
-				log.Error().Msg("userinfo response did not contain the subject the userinfo is issued for")
-				w.WriteHeader(500)
-				return
-			}
-			// now validate that the userinfo is issued for the same subject
-			// as the jwt
-			if accessToken.Subject() != subject {
-				w.WriteHeader(401)
-				return
-			}
+				// now parse the response
+				var userinfo map[string]interface{}
+				err = json.NewDecoder(res.Body).Decode(&userinfo)
+				if err != nil {
+					log.Error().Err(err).Msg("unable to parse userinfo response")
+					w.WriteHeader(500)
+					return
+				}
 
-			// now get the username and real name of the user accessing
-			// the backend
-			username, isSet := userinfo["preferred_username"].(string)
-			if !isSet {
-				log.Warn().Msg("user not identifiable, disallowing access")
-				w.WriteHeader(500)
-				return
-			}
+				// now check the userinfo response for the following fields:
+				//   - sub [the subject the userinfo is for]
+				//   - preferred_username [the username of the user]
+				//   - name [the name of the user]
+				//   - groups [the groups the user is a member of]
+				subject, isSet := userinfo["sub"].(string)
+				if !isSet {
+					log.Error().Msg("userinfo response did not contain the subject the userinfo is issued for")
+					w.WriteHeader(500)
+					return
+				}
+				// now validate that the userinfo is issued for the same subject
+				// as the jwt
+				if accessToken.Subject() != subject {
+					w.WriteHeader(401)
+					return
+				}
 
-			// now get the full name
-			fullName, isSet := userinfo["name"].(string)
-			if !isSet {
-				log.Warn().Msg("user not identifiable, disallowing access")
-				w.WriteHeader(500)
-				return
-			}
+				// now get the username and real name of the user accessing
+				// the backend
+				username, isSet := userinfo["preferred_username"].(string)
+				if !isSet {
+					log.Warn().Msg("user not identifiable, disallowing access")
+					w.WriteHeader(500)
+					return
+				}
+				info.Username = username
 
-			// now check the groups the user is a member of the userinfo
-			// response and has the correct type
-			groups, isSet := userinfo["groups"].([]interface{})
-			if !isSet {
-				log.Warn().Msg("no groups in userinfo response found with type []string")
-				goto setContext
+				// now get the full name
+				fullName, isSet := userinfo["name"].(string)
+				if !isSet {
+					log.Warn().Msg("user not identifiable, disallowing access")
+					w.WriteHeader(500)
+					return
+				}
+				info.FullName = fullName
+
+				// now check the groups the user is a member of the userinfo
+				// response and has the correct type
+				groups, isSet := userinfo["groups"].([]interface{})
+				if !isSet {
+					log.Warn().Msg("no groups in userinfo response found with type []interface{}")
+					goto setContext
+				}
+				info.Groups = groups
+				// todo write object into database
+				ttl := accessToken.Expiration().Sub(time.Now())
+				// now convert the userinfo into bson
+				encodedUserInfo, err := bson.Marshal(info)
+				if err != nil {
+					goto setContext
+				}
+				// now write the data to redis
+				err = database.RedisClient.Set(r.Context(), rawAccessToken, encodedUserInfo, ttl).Err()
+				if err != nil {
+					goto setContext
+				}
+			} else if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			} else {
+				err = bson.Unmarshal(rawUserinfo, &info)
+				if err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
 			}
 
 		setContext:
 			// now add the collected values to the context
-			ctx := context.WithValue(r.Context(), "username", username)
-			ctx = context.WithValue(ctx, "fullName", fullName)
-			ctx = context.WithValue(ctx, "groups", groups)
-			ctx = context.WithValue(ctx, "subject", subject)
+			ctx := context.WithValue(r.Context(), "username", info.Username)
+			ctx = context.WithValue(ctx, "fullName", info.FullName)
+			ctx = context.WithValue(ctx, "groups", info.Groups)
+			ctx = context.WithValue(ctx, "subject", accessToken.Subject())
 
 			// now serve the request with the updated context
 			next.ServeHTTP(w, r.WithContext(ctx))

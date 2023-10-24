@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-package itemRoutes
+package transactionRoutes
 
 import (
 	"errors"
@@ -16,21 +16,17 @@ import (
 	"net/http"
 )
 
-func deleteItem(w http.ResponseWriter, r *http.Request) {
-	// extract the itemid from the url
-	rawItemId := chi.URLParam(r, "itemId")
-	// now convert the raw id into an object it
-	itemId, err := primitive.ObjectIDFromHex(rawItemId)
+func deleteTransaction(w http.ResponseWriter, r *http.Request) {
+	// get the transaction id which shall be deleted
+	transactionId := chi.URLParam(r, "transactionId")
+	// now convert that value into a document id for mongo
+	documentId, err := primitive.ObjectIDFromHex(transactionId)
 	if err != nil {
-		log.Warn().Msg("item id not object id")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	// build a filter with the id
-	filter := bson.D{{"_id", itemId}}
-
-	// now get the collection for the items
+	// now get the collection for the transactions
 	collection, err := middleware.ExtractCollection(r)
 	if err != nil {
 		log.Error().Err(err).Msg("no collection available")
@@ -38,14 +34,17 @@ func deleteItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// now delete all objects matching the item id
-	result := collection.FindOneAndDelete(r.Context(), filter)
+	// now find the document related to the document id and delete it
+	result := collection.FindOneAndDelete(r.Context(), bson.D{{"_id", documentId}})
 	if result.Err() != nil && !errors.Is(result.Err(), mongo.ErrNoDocuments) {
-		log.Error().Err(err).Msg("unable to delete objects")
+		log.Error().Err(err).Msg("unable to find and delete transaction")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	// now respond that there is no content
+	// since there either is no such object or it now has been deleted, return
+	// a 204 No Content as response
 	w.WriteHeader(http.StatusNoContent)
+
+	// TODO: Implement logging of transaction deletion
 }
