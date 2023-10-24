@@ -8,15 +8,16 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/pelletier/go-toml/v2"
-	"github.com/redis/go-redis/v9"
-	"github.com/rs/zerolog/log"
-	"github.com/unikino-gegenlicht/cinema-management-backend/database"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"io/fs"
 	"os"
 	"strings"
+
+	"github.com/pelletier/go-toml/v2"
+	"github.com/rs/zerolog/log"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+
+	"github.com/unikino-gegenlicht/cinema-management-backend/database"
 )
 import (
 	"github.com/rs/zerolog"
@@ -97,15 +98,6 @@ func init() {
 
 	// now get the database for the client
 	database.Database = mongoClient.Database("cinema-management")
-
-	// now connect to the redis datbase
-	redisOptions, err := redis.ParseURL(configuration.RedisUri)
-	if err != nil {
-		log.Fatal().Err(err).Msg("unable to parse redis uri")
-	}
-
-	// now create the client
-	database.RedisClient = redis.NewClient(redisOptions)
 
 	// now the init process is done
 	log.Info().Msg("startup validation done")
