@@ -6,8 +6,9 @@
 package types
 
 import (
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type Transaction struct {
@@ -17,5 +18,6 @@ type Transaction struct {
 	Title       string                `bson:"title" json:"title"`
 	Description string                `bson:"description" json:"description"`
 	Items       *[]primitive.ObjectID `bson:"items,omitempty" json:"items,omitempty"`
+	Register    primitive.ObjectID    `bson:"register" json:"register"`
 	CustomItems *[]Item               `bson:"custom-items,omitempty" json:"customItems,omitempty"`
 }
