@@ -7,10 +7,13 @@ package transactionRoutes
 
 import (
 	"encoding/json"
+	"net/http"
+
 	"github.com/rs/zerolog/log"
+	"go.mongodb.org/mongo-driver/bson"
+
 	"github.com/unikino-gegenlicht/cinema-management-backend/middleware"
 	"github.com/unikino-gegenlicht/cinema-management-backend/types"
-	"net/http"
 )
 
 func newTransaction(w http.ResponseWriter, r *http.Request) {
@@ -29,7 +32,7 @@ func newTransaction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// now insert the transaction
-	_, err = collection.InsertOne(r.Context(), transaction)
+	_, err = collection.ReplaceOne(r.Context(), bson.D{{"_id", transaction.ID}}, transaction)
 	if err != nil {
 		log.Error().Err(err).Msg("unable to insert transaction")
 		w.WriteHeader(http.StatusInternalServerError)
