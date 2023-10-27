@@ -12,4 +12,5 @@ type Item struct {
 	Name  string              `bson:"name" json:"name"`
 	Price float64             `bson:"price" json:"price"`
 	Icon  string              `bson:"icon" json:"icon"`
+	Flags *[]string           `bson:"flags,omitempty" json:"flags,omitempty"`
 }

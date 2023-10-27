@@ -19,14 +19,29 @@ import (
 	"github.com/unikino-gegenlicht/cinema-management-backend/types"
 )
 
-func getTotalSales(w http.ResponseWriter, r *http.Request) {
+func getSales(w http.ResponseWriter, r *http.Request) {
 	// check if the "from" and "until" parameters have been set
+	rId, registerIdSet := r.URL.Query()["register"]
 	fromTimeStamp, fromFilterSet := r.URL.Query()["from"]
 	untilTimeStamp, untilFilterSet := r.URL.Query()["until"]
 
 	// create a filter document
+	idFilter := bson.D{}
 	fromFilter := bson.D{}
 	untilFilter := bson.D{}
+	if registerIdSet {
+		registerID, err := primitive.ObjectIDFromHex(rId[0])
+		if err != nil {
+			w.WriteHeader(421)
+		}
+		idFilter = bson.D{
+			{"$or", []bson.D{
+				bson.D{{"register", registerID}},
+				bson.D{{"register", rId}},
+			}},
+		}
+	}
+
 	if fromFilterSet {
 		from, err := time.Parse(time.RFC3339, fromTimeStamp[0])
 		if err != nil {
@@ -44,6 +59,7 @@ func getTotalSales(w http.ResponseWriter, r *http.Request) {
 	}
 	// now create the complete filter
 	filter := bson.D{{"$and", []bson.D{
+		idFilter,
 		fromFilter,
 		untilFilter,
 	}}}

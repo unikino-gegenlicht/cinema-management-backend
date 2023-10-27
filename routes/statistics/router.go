@@ -16,7 +16,6 @@ import (
 func Router() http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.AppendMongoCollection("transactions"))
-	r.Get("/sales", getTotalSales)
-	r.Get("/sales/{registerId}", getRegisterSales)
+	r.Get("/sales", getSales)
 	return r
 }
