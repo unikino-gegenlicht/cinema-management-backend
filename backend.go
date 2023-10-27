@@ -6,16 +6,19 @@
 package main
 
 import (
-	"github.com/go-chi/chi/v5"
-	"github.com/rs/zerolog/log"
-	"github.com/unikino-gegenlicht/cinema-management-backend/middleware"
-	itemRoutes "github.com/unikino-gegenlicht/cinema-management-backend/routes/items"
-	registerRoutes "github.com/unikino-gegenlicht/cinema-management-backend/routes/register"
-	"github.com/unikino-gegenlicht/cinema-management-backend/routes/transactions"
-	configurationTypes "github.com/unikino-gegenlicht/cinema-management-backend/types/configuration"
 	"net/http"
 	"os"
 	"os/signal"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/rs/zerolog/log"
+
+	"github.com/unikino-gegenlicht/cinema-management-backend/middleware"
+	itemRoutes "github.com/unikino-gegenlicht/cinema-management-backend/routes/items"
+	registerRoutes "github.com/unikino-gegenlicht/cinema-management-backend/routes/register"
+	"github.com/unikino-gegenlicht/cinema-management-backend/routes/statistics"
+	"github.com/unikino-gegenlicht/cinema-management-backend/routes/transactions"
+	configurationTypes "github.com/unikino-gegenlicht/cinema-management-backend/types/configuration"
 )
 import chiMiddleware "github.com/go-chi/chi/v5/middleware"
 
@@ -34,6 +37,7 @@ func main() {
 	mainRouter.Mount("/registers", registerRoutes.Router())
 	mainRouter.Mount("/items", itemRoutes.Router())
 	mainRouter.Mount("/transactions", transactionRoutes.Router())
+	mainRouter.Mount("/statistics", statistics.Router())
 
 	// now create a http server
 	server := &http.Server{
