@@ -31,14 +31,13 @@ func getSales(w http.ResponseWriter, r *http.Request) {
 	untilFilter := bson.D{}
 	if registerIdSet {
 		registerID, err := primitive.ObjectIDFromHex(rId[0])
-		if err != nil {
-			w.WriteHeader(421)
-		}
-		idFilter = bson.D{
-			{"$or", []bson.D{
-				bson.D{{"register", registerID}},
-				bson.D{{"register", rId}},
-			}},
+		if err == nil {
+			idFilter = bson.D{
+				{"$or", []bson.D{
+					bson.D{{"register", registerID}},
+					bson.D{{"register", rId}},
+				}},
+			}
 		}
 	}
 
