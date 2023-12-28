@@ -21,4 +21,7 @@ type Item struct {
 	// IssueTicket is a boolean specifying if a ticket is issued on the
 	// purchase of this item
 	IssueTicket bool `bson:"issueTicket" json:"issueTicket"`
+	// TicketCount is an unsigned integer specifying how many tickets are to
+	// be issued on the purchase of the item. If it is not set it will not be
+	TicketCount uint `bson:"ticketCount" json:"ticketCount"`
 }
