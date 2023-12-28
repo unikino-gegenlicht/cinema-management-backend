@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io/fs"
 	"os"
@@ -18,6 +19,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/unikino-gegenlicht/cinema-management-backend/database"
+	backendErrors "github.com/unikino-gegenlicht/cinema-management-backend/errors"
 )
 import (
 	"github.com/rs/zerolog"
@@ -44,11 +46,11 @@ func init() {
 
 	// since the logger is configured, start reading the configuration file
 	configurationFile, err := os.OpenFile("./config.toml", os.O_RDONLY, 0660)
-	// now check if the error indicated that there is no configuration file
+	// now check if the errors indicated that there is no configuration file
 	// found
 	if errors.Is(err, fs.ErrNotExist) {
 		// since there is no configuration file to be found, exit the backend
-		// with a fatal error
+		// with a fatal errors
 		log.Fatal().Msg("no configuration file found. please check the documentation")
 	}
 	// since the configuration file exists, read the configuration
@@ -98,6 +100,21 @@ func init() {
 
 	// now get the database for the client
 	database.Database = mongoClient.Database("cinema-management")
+
+	// now load the error file from the disk
+	errorFile, err := os.Open("./errors.json")
+	if err != nil {
+		log.Fatal().Err(err).Msg("unable to open error file")
+	}
+	var errs []backendErrors.APIError
+	err = json.NewDecoder(errorFile).Decode(&errs)
+	if err != nil {
+		log.Fatal().Err(err).Msg("unable to load errors")
+	}
+	apiErrors = make(map[string]backendErrors.APIError)
+	for _, apiError := range errs {
+		apiErrors[apiError.Code] = apiError
+	}
 
 	// now the init process is done
 	log.Info().Msg("startup validation done")

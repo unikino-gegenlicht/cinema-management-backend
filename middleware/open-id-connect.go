@@ -12,13 +12,12 @@ import (
 	"io"
 	"net/http"
 	"regexp"
-	"slices"
-	"time"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/rs/zerolog/log"
 
+	backendErrors "github.com/unikino-gegenlicht/cinema-management-backend/errors"
 	configurationTypes "github.com/unikino-gegenlicht/cinema-management-backend/types/configuration"
 )
 
@@ -39,7 +38,7 @@ type userInfo struct {
 // To allow the individual access control to some routes, the middleware
 // attaches all scopes found to the request context.
 // This way, the routes may filter the scopes further, if needed.
-func OpenIDConnectJWTAuthentication(config configurationTypes.OpenIDConnectConfiguration) func(http.Handler) http.Handler {
+func OpenIDConnectJWTAuthentication(config configurationTypes.OpenIDConnectConfiguration, apiErrors map[string]backendErrors.APIError) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		// create the handlerFunction in which all the code of the handler will
 		// be contained in
@@ -49,14 +48,12 @@ func OpenIDConnectJWTAuthentication(config configurationTypes.OpenIDConnectConfi
 			headerValues, headerSet := r.Header["Authorization"]
 			// now check if the header is even present
 			if !headerSet {
-				w.WriteHeader(401)
+				apiErrors["NO_AUTHENTICATION"].SendError(w)
 				return
 			}
 			// now check that there is only one Authorization header present
 			if len(headerValues) != 1 {
-				// since there is more than one credential available, return an
-				// error indicating a bad request happened
-				w.WriteHeader(400)
+				apiErrors["MULTIPLE_AUTHORIZATIONS"].SendError(w)
 				return
 			}
 			// since the id token is transmitted as bearer token, get the token
@@ -68,69 +65,60 @@ func OpenIDConnectJWTAuthentication(config configurationTypes.OpenIDConnectConfi
 			// now try to get the jwks from the identity provider
 			res, err := http.Get(*config.JWKSEndpointUri)
 			if err != nil {
-				// todo: handle the error better
 				log.Error().Err(err).Msg("unable to pull jwks from open id provider")
-				w.WriteHeader(500)
+				apiErrors["JWKS_NOT_LOADABLE"].SendError(w)
 				return
 			}
 			rawJWKS, err := io.ReadAll(res.Body)
 			// now parse the response body into the jwks
 			jwks, err := jwk.Parse(rawJWKS)
 			if err != nil {
-				// todo: handle the error better
 				log.Error().Err(err).Msg("unable to parse jwks from open id provider")
+				apiErrors["JWKS_PARSE_FAILED"].SendError(w)
 				w.WriteHeader(500)
 				return
 			}
 
-			// since now the id token and the jwks are loaded, parse the raw
+			// since the id token and the jwks have been loaded, parse the raw
 			// id token into the jwt used for checking the authentication
 			// information
-			accessToken, err := jwt.ParseString(rawAccessToken, jwt.WithKeySet(jwks))
+			options := []jwt.ParseOption{
+				jwt.WithKeySet(jwks),
+				jwt.WithIssuer(*config.Issuer),
+				jwt.WithAudience(config.ClientID),
+			}
+			accessToken, err := jwt.ParseString(rawAccessToken, options...)
 			if err != nil {
-				// todo: handle error better
-				log.Error().Err(err).Msg("unable to parse jwt token. token invalid")
-				w.WriteHeader(401)
-				return
-			}
-
-			// now check the following markers of the access token:
-			//   - the issuer
-			//   - the audience
-			//   - the issue time
-			//   - the expiry time
-
-			// check if the issuer of the token is the same as the issuer
-			// reported by the discovery request
-			if accessToken.Issuer() != *config.Issuer {
-				// the token does not habe the same issuer as the discovery
-				// returned. disallow the access
-				w.WriteHeader(401)
-				return
-			}
-
-			// now check if the audiences of the id token contain the client
-			// id used for the request
-			if !slices.Contains(accessToken.Audience(), config.ClientID) {
-				// the token has not been issued for this client. disallow the
-				// access
-				w.WriteHeader(401)
-				return
-			}
-
-			// now check if the issue time is not in the future
-			if accessToken.IssuedAt().After(time.Now()) {
-				// since the token has been issued in the future, disallow the
-				// access
-				w.WriteHeader(401)
-				return
-			}
-
-			// now check if the expiry time is not in the past
-			if accessToken.Expiration().Before(time.Now()) {
-				// since the token has expired, disallow the access
-				w.WriteHeader(401)
-				return
+				switch err {
+				case jwt.ErrInvalidAudience():
+					log.Warn().Str("err", "'audience' incorrect").Msg("backend accessed with invalid token")
+					apiErrors["INCORRECT_AUDIENCE"].SendError(w)
+					return
+				case jwt.ErrInvalidIssuedAt():
+					log.Warn().Str("err", "'issued at' incorrect").Msg("backend accessed with invalid token")
+					apiErrors["ISSUED_AT_INVALID"].SendError(w)
+					return
+				case jwt.ErrInvalidIssuer():
+					log.Warn().Str("err", "'issuer' incorrect").Msg("backend accessed with invalid token")
+					apiErrors["INCORRECT_ISSUER"].SendError(w)
+					return
+				case jwt.ErrRequiredClaim():
+					log.Warn().Str("err", "'claims' incorrect").Msg("backend accessed with invalid token")
+					apiErrors["MISSING_CLAIM"].SendError(w)
+					return
+				case jwt.ErrTokenExpired():
+					log.Warn().Str("err", "token expired").Msg("backend accessed with invalid token")
+					apiErrors["TOKEN_EXPIRED"].SendError(w)
+					return
+				case jwt.ErrTokenNotYetValid():
+					log.Warn().Str("err", "token not valid yet").Msg("backend accessed with invalid token")
+					apiErrors["TOKEN_NOT_ALIVE"].SendError(w)
+					return
+				default:
+					log.Warn().Err(err).Msg("backend accessed with invalid token")
+					apiErrors["TOKEN_NOT_ALIVE"].SendError(w)
+					return
+				}
 			}
 
 			// since all checks on the access token have passed, try to get the
@@ -138,7 +126,7 @@ func OpenIDConnectJWTAuthentication(config configurationTypes.OpenIDConnectConfi
 			// userinfo endpoint was discovered
 			if config.UserinfoEndpointUri == nil {
 				log.Error().Msg("no userinfo endpoint discovered during init")
-				w.WriteHeader(500)
+				apiErrors["USERINFO_ENDPOINT_DISCOVERY_FAIL"].SendError(w)
 				return
 			}
 
@@ -148,7 +136,7 @@ func OpenIDConnectJWTAuthentication(config configurationTypes.OpenIDConnectConfi
 			req, err := http.NewRequest("GET", *config.UserinfoEndpointUri, nil)
 			if err != nil {
 				log.Error().Err(err).Msg("unable to build request for userinfo endpoint")
-				w.WriteHeader(500)
+				backendErrors.SendInternalError(err, w)
 				return
 			}
 			req.Header.Set("Authorization", headerValues[0])
@@ -158,7 +146,7 @@ func OpenIDConnectJWTAuthentication(config configurationTypes.OpenIDConnectConfi
 			res, err = httpClient.Do(req)
 			if err != nil {
 				log.Error().Err(err).Msg("unable to request userinfo endpoint")
-				w.WriteHeader(500)
+				backendErrors.SendInternalError(err, w)
 				return
 			}
 
@@ -167,7 +155,7 @@ func OpenIDConnectJWTAuthentication(config configurationTypes.OpenIDConnectConfi
 			err = json.NewDecoder(res.Body).Decode(&userinfo)
 			if err != nil {
 				log.Error().Err(err).Msg("unable to parse userinfo response")
-				w.WriteHeader(500)
+				backendErrors.SendInternalError(err, w)
 				return
 			}
 
@@ -233,7 +221,7 @@ func OpenIDConnectJWTAuthentication(config configurationTypes.OpenIDConnectConfi
 
 // ExtractUserInfo allows the retrieval of the available user information that
 // has been set by the [OpenIDConnectJWTAuthentication] middleware. If any of
-// the expected user information fields is empty, it will return an error
+// the expected user information fields is empty, it will return an errors
 func ExtractUserInfo(r *http.Request) (username string, fullName string, subject string, groups []string, err error) {
 	// get the context from the request
 	ctx := r.Context()

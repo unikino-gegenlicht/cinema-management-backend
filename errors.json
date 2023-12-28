@@ -1,0 +1,74 @@
+[
+  {
+    "code": "NO_AUTHENTICATION",
+    "title": "No Authentication",
+    "description": "The request did not contain any authorization information. Please check your request",
+    "httpCode": 401
+  },
+  {
+    "code": "MULTIPLE_AUTHORIZATIONS",
+    "title": "Multiple Authorizations Sent",
+    "description": "The request contained multiple sets of authorization data. Please only supply one",
+    "httpCode": 400
+  },
+  {
+    "code": "JWKS_NOT_LOADABLE",
+    "title": "JSON Web Key Set not loadable",
+    "description": "The JSON Web Key Set required to validate the access tokens could no be loaded",
+    "httpCode": 500
+  },
+  {
+    "code": "JWKS_PARSE_FAILED",
+    "title": "JSON Web Key Set not parseable",
+    "description": "The JSON Web Key Set required to validate the access tokens could no be parsed from the response returned by the OpenID Connect provider",
+    "httpCode": 500
+  },
+  {
+    "code": "INCORRECT_AUDIENCE",
+    "title": "Unauthorized: Incorrect Audience",
+    "description": "The access token does not contain the correct audience needed to access this application. Please check the 'aud' claim",
+    "httpCode": 401
+  },
+  {
+    "code": "ISSUED_AT_INVALID",
+    "title": "Unauthorized: Invalid Issued At",
+    "description": "The value set in the 'iat' field of the access token is invalid. Please check the claim 'iat'",
+    "httpCode": 401
+  },
+  {
+    "code": "INCORRECT_ISSUER",
+    "title": "Unauthorized: Invalid Issuer",
+    "description": "The access token has not been issued by a configured openid connect provider",
+    "httpCode": 401
+  },
+  {
+    "code": "MISSING_CLAIM",
+    "title": "Unauthorized: Claim missing",
+    "description": "The access token is missing some required claims. Please check your configuration and openid connect provider",
+    "httpCode": 401
+  },
+  {
+    "code": "TOKEN_EXPIRED",
+    "title": "Unauthorized: Access Token Expired",
+    "description": "The access token used to access the application has expired. Please request a new access token from the openid connect provider",
+    "httpCode": 401
+  },
+  {
+    "code": "TOKEN_NOT_ALIVE",
+    "title": "Unauthorized: Token used before validity",
+    "description": "The access token used to access the application has been used before it becomes valid. Please retry your request later",
+    "httpCode": 403
+  },
+  {
+    "code": "TOKEN_INVALID_UNKNOWN",
+    "title": "Unauthorized: Unknown Reason",
+    "description": "The access token is invalid but the reason is not known. Please contact your administrator",
+    "httpCode": 401
+  },
+  {
+    "code": "USERINFO_ENDPOINT_DISCOVERY_FAIL",
+    "title": "Userinfo Endpoint Discovery Fail",
+    "description": "The userinfo endpoint could not be discovered by the backend. Please check your configuration and provider",
+    "httpCode": 500
+  }
+]
