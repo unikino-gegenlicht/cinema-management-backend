@@ -7,7 +7,7 @@ require (
 	github.com/lestrrat-go/jwx/v2 v2.0.12
 	github.com/pelletier/go-toml/v2 v2.1.0
 	github.com/redis/go-redis/v9 v9.3.1
-	github.com/rs/zerolog v1.30.0
+	github.com/rs/zerolog v1.31.0
 	go.mongodb.org/mongo-driver v1.12.1
 )
 
@@ -23,8 +23,8 @@ require (
 	github.com/lestrrat-go/httprc v1.0.4 // indirect
 	github.com/lestrrat-go/iter v1.0.2 // indirect
 	github.com/lestrrat-go/option v1.0.1 // indirect
-	github.com/mattn/go-colorable v0.1.12 // indirect
-	github.com/mattn/go-isatty v0.0.14 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe // indirect
 	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
