@@ -1,0 +1,13 @@
+version: 2
+updates:
+  - package-ecosystem: gomod
+    schedule:
+      interval: weekly
+      day: sunday
+      time: "03:00"
+    allow:
+      - dependency-type: direct
+    assignees:
+      - "dr4hcu5-jan"
+    labels:
+      - "dependencies"
