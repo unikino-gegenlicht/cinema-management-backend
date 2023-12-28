@@ -103,6 +103,9 @@ func init() {
 
 	// now load the error file from the disk
 	errorFile, err := os.Open("./errors.json")
+	if err != nil {
+		log.Fatal().Err(err).Msg("unable to open error file")
+	}
 	var errs []backendErrors.APIError
 	err = json.NewDecoder(errorFile).Decode(&errs)
 	if err != nil {
