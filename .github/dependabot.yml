@@ -9,5 +9,6 @@ updates:
       - dependency-type: direct
     assignees:
       - "dr4hcu5-jan"
+    directory: /
     labels:
       - "dependencies"
