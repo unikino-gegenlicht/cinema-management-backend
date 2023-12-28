@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog/log"
 
+	"github.com/unikino-gegenlicht/cinema-management-backend/errors"
 	"github.com/unikino-gegenlicht/cinema-management-backend/middleware"
 	itemRoutes "github.com/unikino-gegenlicht/cinema-management-backend/routes/items"
 	registerRoutes "github.com/unikino-gegenlicht/cinema-management-backend/routes/register"
@@ -23,6 +24,7 @@ import (
 import chiMiddleware "github.com/go-chi/chi/v5/middleware"
 
 var configuration configurationTypes.Configuration
+var apiErrors map[string]errors.APIError
 
 func main() {
 	// to manage the different backend routes, create a new router
@@ -32,7 +34,7 @@ func main() {
 	mainRouter.Use(chiMiddleware.RealIP)
 	mainRouter.Use(chiMiddleware.RequestID)
 
-	mainRouter.Use(middleware.OpenIDConnectJWTAuthentication(configuration.OpenIdConnect))
+	mainRouter.Use(middleware.OpenIDConnectJWTAuthentication(configuration.OpenIdConnect, apiErrors))
 	// now mount the different sub-routers that are maintained in this file
 	mainRouter.Mount("/registers", registerRoutes.Router())
 	mainRouter.Mount("/items", itemRoutes.Router())
@@ -49,7 +51,7 @@ func main() {
 	go func() {
 		err := server.ListenAndServe()
 		if err != nil {
-			log.Fatal().Err(err).Msg("An error occurred while starting the backend http server")
+			log.Fatal().Err(err).Msg("An errors occurred while starting the backend http server")
 		}
 	}()
 
