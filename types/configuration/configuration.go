@@ -6,7 +6,7 @@
 package configurationTypes
 
 type Configuration struct {
-	MongoDbUri    string                     `toml:"mongoDB-uri" comment:"the uri used to connect to the mongodb in which all data is stored"`
 	RedisUri      string                     `toml:"redis-uri" comment:"the uri used to connect to the redis database used as cache"`
+	Database      DatabaseConfiguration      `toml:"database" comment:"the configuration for the database storing the data"`
 	OpenIdConnect OpenIDConnectConfiguration `toml:"openid-connect" comment:"the configuration for authenticating users accessing the backend"`
 }
