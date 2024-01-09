@@ -11,12 +11,10 @@ import (
 	"errors"
 	"io/fs"
 	"os"
-	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/rs/zerolog/log"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/unikino-gegenlicht/cinema-management-backend/database"
 	backendErrors "github.com/unikino-gegenlicht/cinema-management-backend/errors"
@@ -77,29 +75,11 @@ func init() {
 		log.Fatal().Msg("empty jwks endpoint in configuration")
 	}
 
-	// now check that the mongo db uri is not empty
-	if strings.TrimSpace(configuration.MongoDbUri) == "" {
-		log.Fatal().Msg("empty mongodb-uri in configuration")
-	}
-
-	// since the configuration has been validated, connect to the mongodb
-	mongoOptions := options.Client().ApplyURI(configuration.MongoDbUri)
-	mongoOptions.SetAppName("cinema-management-backend")
-
-	// now connect to the database
-	mongoClient, err := mongo.Connect(context.TODO(), mongoOptions)
+	// now connect to the postgres database
+	database.Postgres, err = pgx.Connect(context.Background(), configuration.Database.ToDSN())
 	if err != nil {
 		log.Fatal().Err(err).Msg("unable to connect to database")
 	}
-
-	// now check the connection by a ping
-	err = mongoClient.Ping(context.TODO(), nil)
-	if err != nil {
-		log.Fatal().Err(err).Msg("database did not answer to ping")
-	}
-
-	// now get the database for the client
-	database.Database = mongoClient.Database("cinema-management")
 
 	// now load the error file from the disk
 	errorFile, err := os.Open("./errors.json")
