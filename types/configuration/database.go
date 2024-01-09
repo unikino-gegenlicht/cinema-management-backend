@@ -24,6 +24,6 @@ type DatabaseConfiguration struct {
 }
 
 func (dc DatabaseConfiguration) ToDSN() string {
-	return fmt.Sprintf("host=%s port=%d user=%s password=%s sslmode=disable dbname=cinema_management",
-		dc.Host, dc.Port, dc.Username, dc.Password)
+	return fmt.Sprintf("postgres://%s:%s@%s:%d/cinema_management",
+		dc.Username, dc.Password, dc.Host, dc.Port)
 }
