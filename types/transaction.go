@@ -1,25 +1,39 @@
 /*
- * Copyright (c) 2023.  Jan Eike Suchard. All rights reserved
+ * Copyright (c) 2024.  Jan Eike Suchard. All rights reserved
  * SPDX-License-Identifier: MIT
  */
 
 package types
 
-import (
-	"time"
+import "github.com/jackc/pgx/v5/pgtype"
 
-	"go.mongodb.org/mongo-driver/bson/primitive"
-)
-
+// Transaction reflects a single stored transaction in the database
 type Transaction struct {
-	ID                primitive.ObjectID    `bson:"_id,omitempty" json:"id,omitempty"`
-	Time              time.Time             `bson:"at" json:"at"`
-	Amount            float64               `bson:"amount" json:"amount"`
-	Title             string                `bson:"title" json:"title"`
-	Description       string                `bson:"description" json:"description"`
-	Items             *[]primitive.ObjectID `bson:"items,omitempty" json:"items,omitempty"`
-	Register          primitive.ObjectID    `bson:"register" json:"register"`
-	CustomItems       *[]Item               `bson:"custom-items,omitempty" json:"customItems,omitempty"`
-	PaymentType       string                `bson:"paymentType" json:"paymentType"`
-	ExternalPaymentID string                `bson:"externalPaymentID" json:"externalPaymentID"`
+	// ID contains the transaction id that has been assigned by the database
+	// to this instance
+	ID pgtype.UUID `json:"id" db:"id"`
+
+	// At contains the timestamp that indicates at which point in time the
+	// transaction happened
+	At pgtype.Timestamptz `json:"at" db:"at"`
+
+	// Amount contains the amount of money the transaction is about
+	Amount pgtype.Numeric `json:"amount" db:"amount"`
+
+	// By contains the uuid of the user responsible for the transaction
+	By pgtype.UUID `json:"by" db:"by"`
+
+	// Title contains the title of the transaction
+	Title pgtype.Text `json:"title" db:"tile"`
+
+	// Description contains a more-indepth description of the transaction
+	Description pgtype.Text `json:"description" db:"description"`
+
+	// Register contains the uuid of the register the transaction is associated
+	// with
+	Register pgtype.UUID `json:"register" db:"register"`
+
+	// SaleID contains the id of a sale if the transaction has been the source
+	// of a transaction
+	SaleID pgtype.UUID `json:"saleID" db:"sale_id"`
 }
