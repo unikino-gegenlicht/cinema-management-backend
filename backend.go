@@ -15,10 +15,6 @@ import (
 
 	"github.com/unikino-gegenlicht/cinema-management-backend/errors"
 	"github.com/unikino-gegenlicht/cinema-management-backend/middleware"
-	itemRoutes "github.com/unikino-gegenlicht/cinema-management-backend/routes/items"
-	registerRoutes "github.com/unikino-gegenlicht/cinema-management-backend/routes/register"
-	"github.com/unikino-gegenlicht/cinema-management-backend/routes/statistics"
-	"github.com/unikino-gegenlicht/cinema-management-backend/routes/transactions"
 	configurationTypes "github.com/unikino-gegenlicht/cinema-management-backend/types/configuration"
 )
 import chiMiddleware "github.com/go-chi/chi/v5/middleware"
@@ -34,12 +30,22 @@ func main() {
 	mainRouter.Use(chiMiddleware.RealIP)
 	mainRouter.Use(chiMiddleware.RequestID)
 
-	mainRouter.Use(middleware.OpenIDConnectJWTAuthentication(configuration.OpenIdConnect, apiErrors))
-	// now mount the different sub-routers that are maintained in this file
-	mainRouter.Mount("/registers", registerRoutes.Router())
-	mainRouter.Mount("/items", itemRoutes.Router())
-	mainRouter.Mount("/transactions", transactionRoutes.Router())
-	mainRouter.Mount("/statistics", statistics.Router())
+	// now create a router which is used for public-facing routes (e.g., reservation management)
+	publicRouter := chi.NewRouter()
+	publicRouter.HandleFunc("/*", func(writer http.ResponseWriter, request *http.Request) {
+		writer.WriteHeader(http.StatusNotImplemented)
+	})
+
+	// now create a router which is used for private-facing routes (e.g., ticket issuing, sales)
+	privateRouter := chi.NewRouter()
+	privateRouter.Use(middleware.OpenIDConnectJWTAuthentication(configuration.OpenIdConnect, apiErrors))
+	privateRouter.HandleFunc("/*", func(writer http.ResponseWriter, request *http.Request) {
+		writer.WriteHeader(http.StatusNotImplemented)
+	})
+
+	// now mount the public and private routers
+	mainRouter.Mount("/public", publicRouter)
+	mainRouter.Mount("/", privateRouter)
 
 	// now create a http server
 	server := &http.Server{

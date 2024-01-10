@@ -1,14 +1,22 @@
 /*
- * Copyright (c) 2023.  Jan Eike Suchard. All rights reserved
+ * Copyright (c) 2024.  Jan Eike Suchard. All rights reserved
  * SPDX-License-Identifier: MIT
  */
 
 package types
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
+import "github.com/jackc/pgx/v5/pgtype"
 
+// Register reflects a single instance of a database-stored register.
+// A register is used to differentiate between sales and other transactions
 type Register struct {
-	ID          *primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
-	Name        string              `bson:"name" json:"name"`
-	Description string              `bson:"description" json:"description"`
+	// ID contains the identifier of the register in backend applications
+	ID pgtype.UUID `json:"id" db:"id"`
+
+	// Name contains the name that identifies the register in the frontend
+	Name pgtype.Text `json:"name" db:"name"`
+
+	// Description contains a more in depth description of the register that may
+	// be displayed in the frontend
+	Description pgtype.Text `json:"description" db:"description"`
 }

@@ -11,12 +11,12 @@ import (
 	"errors"
 	"io/fs"
 	"os"
-	"strings"
+	"slices"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/pelletier/go-toml/v2"
+	"github.com/qustavo/dotsql"
 	"github.com/rs/zerolog/log"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/unikino-gegenlicht/cinema-management-backend/database"
 	backendErrors "github.com/unikino-gegenlicht/cinema-management-backend/errors"
@@ -77,29 +77,48 @@ func init() {
 		log.Fatal().Msg("empty jwks endpoint in configuration")
 	}
 
-	// now check that the mongo db uri is not empty
-	if strings.TrimSpace(configuration.MongoDbUri) == "" {
-		log.Fatal().Msg("empty mongodb-uri in configuration")
-	}
-
-	// since the configuration has been validated, connect to the mongodb
-	mongoOptions := options.Client().ApplyURI(configuration.MongoDbUri)
-	mongoOptions.SetAppName("cinema-management-backend")
-
-	// now connect to the database
-	mongoClient, err := mongo.Connect(context.TODO(), mongoOptions)
+	// now connect to the postgres database
+	database.Postgres, err = pgx.Connect(context.Background(), configuration.Database.ToDSN())
 	if err != nil {
 		log.Fatal().Err(err).Msg("unable to connect to database")
 	}
 
-	// now check the connection by a ping
-	err = mongoClient.Ping(context.TODO(), nil)
+	// now load the tables and type queries
+	tableQueries, err := dotsql.LoadFromFile("./database/tables-and-types.sql")
 	if err != nil {
-		log.Fatal().Err(err).Msg("database did not answer to ping")
+		log.Fatal().Err(err).Msg("unable to load table and type queries")
 	}
 
-	// now get the database for the client
-	database.Database = mongoClient.Database("cinema-management")
+	var queryNames []string
+
+	for queryName, _ := range tableQueries.QueryMap() {
+		queryNames = append(queryNames, queryName)
+	}
+	slices.Sort(queryNames)
+
+	for _, queryName := range queryNames {
+		query, err := tableQueries.Raw(queryName)
+		if err != nil {
+			log.Fatal().Err(err).Str("query", queryName).Msg("unable to parse query")
+		}
+		_, err = database.Postgres.Exec(context.Background(), query)
+		if err != nil {
+			log.Fatal().Err(err).Str("query", queryName).Msg("unable to execute query")
+		}
+	}
+
+	// now register the composite types
+	compositeTypes := []string{
+		"screening_time",
+		"screening_time[]",
+	}
+	for _, compositeType := range compositeTypes {
+		dataType, err := database.Postgres.LoadType(context.Background(), compositeType)
+		if err != nil {
+			log.Fatal().Err(err).Msg("unable to load composite types")
+		}
+		database.Postgres.TypeMap().RegisterType(dataType)
+	}
 
 	// now load the error file from the disk
 	errorFile, err := os.Open("./errors.json")
