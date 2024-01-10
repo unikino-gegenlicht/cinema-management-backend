@@ -70,6 +70,12 @@ func OpenIDConnectJWTAuthentication(config configurationTypes.OpenIDConnectConfi
 				return
 			}
 			rawJWKS, err := io.ReadAll(res.Body)
+			if err != nil {
+				log.Error().Err(err).Msg("unable to parse jwks from open id provider")
+				apiErrors["JWKS_PARSE_FAILED"].SendError(w)
+				w.WriteHeader(500)
+				return
+			}
 			// now parse the response body into the jwks
 			jwks, err := jwk.Parse(rawJWKS)
 			if err != nil {
