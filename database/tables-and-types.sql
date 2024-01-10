@@ -3,10 +3,10 @@
  * SPDX-License-Identifier: MIT
  */
 
--- name: create-schema
+-- name: 01-create-schema
 CREATE SCHEMA IF NOT EXISTS cinema_management;
 
--- name: table-users
+-- name: 02-table-users
 CREATE TABLE IF NOT EXISTS cinema_management.users
 (
     id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS cinema_management.users
     active      bool             DEFAULT FALSE
 );
 
--- name: create-logging-table
+-- name: 03-create-logging-table
 CREATE TABLE IF NOT EXISTS cinema_management.event_log
 (
     id      serial PRIMARY KEY,
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS cinema_management.event_log
     event   text        NOT NULL
 );
 
--- name: table-items
+-- name: 04-table-items
 CREATE TABLE IF NOT EXISTS cinema_management.items
 (
     id           uuid         NOT NULL PRIMARY KEY UNIQUE DEFAULT gen_random_uuid(),
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS cinema_management.items
     issue_ticket bool                                     DEFAULT FALSE
 );
 
--- name: table-registers
+-- name: 05-table-registers
 CREATE TABLE IF NOT EXISTS cinema_management.registers
 (
     id          uuid NOT NULL PRIMARY KEY UNIQUE DEFAULT gen_random_uuid(),
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS cinema_management.registers
     description text
 );
 
--- name: table-sales
+-- name: 06-table-sales
 CREATE TABLE IF NOT EXISTS cinema_management.sales
 (
     id              uuid        NOT NULL PRIMARY KEY UNIQUE DEFAULT gen_random_uuid(),
@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS cinema_management.sales
     refunded        bool                                    DEFAULT FALSE
 );
 
--- name: table-transactions
+-- name: 07-table-transactions
 CREATE TABLE IF NOT EXISTS cinema_management.transactions
 (
     id          uuid        NOT NULL PRIMARY KEY UNIQUE DEFAULT gen_random_uuid(),
@@ -67,16 +67,24 @@ CREATE TABLE IF NOT EXISTS cinema_management.transactions
     sale_id     uuid                                    DEFAULT NULL REFERENCES cinema_management.sales (id) MATCH SIMPLE ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
--- name: type-screening
-CREATE TYPE screening_time AS
-(
-    id                 uuid,
-    at                 timestamptz,
-    available_seats    int,
-    allow_reservations bool
-);
+-- name: 08-type-screening
+DO
+$$
+    BEGIN
+        CREATE TYPE screening_time AS
+        (
+            id                 uuid,
+            at                 timestamptz,
+            available_seats    int,
+            allow_reservations bool
+        );
+    EXCEPTION
+        WHEN DUPLICATE_OBJECT THEN NULL;
+    END
+$$;
 
--- name: table-movies
+
+-- name: 09-table-movies
 CREATE TABLE IF NOT EXISTS cinema_management.movies
 (
     id                     uuid NOT NULL PRIMARY KEY UNIQUE DEFAULT gen_random_uuid(),
@@ -90,17 +98,17 @@ CREATE TABLE IF NOT EXISTS cinema_management.movies
     additional_information jsonb                            DEFAULT NULL
 );
 
--- name: table-tickets
+-- name: 10-table-tickets
 CREATE TABLE IF NOT EXISTS cinema_management.tickets
 (
     id             serial PRIMARY KEY,
-    external_id    uuid        NOT NULL PRIMARY KEY UNIQUE DEFAULT gen_random_uuid(),
-    issued_at      timestamptz NOT NULL                    DEFAULT NOW(),
-    movie          uuid                                    DEFAULT NULL REFERENCES cinema_management.movies (id) MATCH SIMPLE ON UPDATE CASCADE ON DELETE CASCADE,
-    screening_time uuid                                    DEFAULT NULL
+    external_id    uuid        NOT NULL UNIQUE DEFAULT gen_random_uuid(),
+    issued_at      timestamptz NOT NULL        DEFAULT NOW(),
+    movie          uuid                        DEFAULT NULL REFERENCES cinema_management.movies (id) MATCH SIMPLE ON UPDATE CASCADE ON DELETE CASCADE,
+    screening_time uuid                        DEFAULT NULL
 );
 
--- name: table-reservations
+-- name: 11-table-reservations
 CREATE TABLE IF NOT EXISTS cinema_management.reservations
 (
     id             uuid PRIMARY KEY UNIQUE DEFAULT gen_random_uuid(),

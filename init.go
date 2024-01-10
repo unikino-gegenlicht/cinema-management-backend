@@ -11,9 +11,11 @@ import (
 	"errors"
 	"io/fs"
 	"os"
+	"slices"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/pelletier/go-toml/v2"
+	"github.com/qustavo/dotsql"
 	"github.com/rs/zerolog/log"
 
 	"github.com/unikino-gegenlicht/cinema-management-backend/database"
@@ -79,6 +81,43 @@ func init() {
 	database.Postgres, err = pgx.Connect(context.Background(), configuration.Database.ToDSN())
 	if err != nil {
 		log.Fatal().Err(err).Msg("unable to connect to database")
+	}
+
+	// now load the tables and type queries
+	tableQueries, err := dotsql.LoadFromFile("./database/tables-and-types.sql")
+	if err != nil {
+		log.Fatal().Err(err).Msg("unable to load table and type queries")
+	}
+
+	var queryNames []string
+
+	for queryName, _ := range tableQueries.QueryMap() {
+		queryNames = append(queryNames, queryName)
+	}
+	slices.Sort(queryNames)
+
+	for _, queryName := range queryNames {
+		query, err := tableQueries.Raw(queryName)
+		if err != nil {
+			log.Fatal().Err(err).Str("query", queryName).Msg("unable to parse query")
+		}
+		_, err = database.Postgres.Exec(context.Background(), query)
+		if err != nil {
+			log.Fatal().Err(err).Str("query", queryName).Msg("unable to execute query")
+		}
+	}
+
+	// now register the composite types
+	compositeTypes := []string{
+		"screening_time",
+		"screening_time[]",
+	}
+	for _, compositeType := range compositeTypes {
+		dataType, err := database.Postgres.LoadType(context.Background(), compositeType)
+		if err != nil {
+			log.Fatal().Err(err).Msg("unable to load composite types")
+		}
+		database.Postgres.TypeMap().RegisterType(dataType)
 	}
 
 	// now load the error file from the disk
