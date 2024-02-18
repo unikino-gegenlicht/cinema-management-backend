@@ -8,7 +8,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.1.1
 	github.com/redis/go-redis/v9 v9.4.0
 	github.com/rs/zerolog v1.31.0
-	go.mongodb.org/mongo-driver v1.13.1
+	go.mongodb.org/mongo-driver v1.14.0
 )
 
 require (
