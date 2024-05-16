@@ -1,17 +1,31 @@
 <div align="center">
-<img height="150px" src="https://gegenlicht.net/wp-content/uploads/2022/05/cropped-Avatar.png">
-<h1>Cinema Management Backend</h1>
-<h3>cinema-management-backend</h3>
-<p>⚙️ The backend for the cinema management tool developed in-house</p>
-<img 
-src="https://img.shields.io/github/go-mod/go-version/unikino-gegenlicht/cinema-management-backend?style=for-the-badge"
-alt="Go Lang Version"/>
-<a href="openapi.yaml">
-<img 
-src="https://img.shields.io/badge/API%20Documentation-Existing-6BA539?style=for-the-badge&logo=OpenAPI%20Initiative" 
-alt="OpenAPI Schema Version"/></a>
+<h1>Cinema Management Platform</h1>
+<p>🗃️🗄️Backend Server</p>
 </div>
 
-## About
-This repository contains the backend for the cinema management application. 
-It is fully able to run in a stand-alone mode.
+This repository contains the backend for the cinema management platform. 
+It may be used with the frontend managed in the [unikino-gegenlicht/cmp-frontend]
+repository or a custom written frontend.
+
+## Features
+> [!NOTE]
+> Not all features are currently available and will be added later on to the
+> backend
+
+- [ ] User Management
+    - [ ] Integrated User Management
+    - [ ] Open ID Connect with Autoprovision
+    - [ ] Permission Model
+- [ ] Reservation Management
+    - [ ] Issuing Reservation QR-Codes
+    - [ ] Validating issued QR-Codes
+    - [ ] Self-Service reservation cancellations (public)
+- [ ] Point of Sale
+    - [ ] Article Management
+    - [ ] Register Management
+    - [ ] Statistics
+    - [ ] Loyalty Program
+    - [ ] Receipt transmission
+        - [ ] E-Mail
+        - [ ] QR-Code
+        - [ ] Plain Text (for printing)
