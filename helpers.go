@@ -15,7 +15,9 @@ var Commit = func() string {
 
 		for _, setting := range info.Settings {
 			if setting.Key == "vcs.modified" {
-				commitHash += " (modified)"
+				if setting.Value == "true" {
+					commitHash += " (modified)"
+				}
 			}
 		}
 	}
