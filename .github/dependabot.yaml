@@ -1,0 +1,17 @@
+version: 2
+updates:
+  - package-ecosystem: "gomod"
+    schedule:
+      interval: weekly
+      day: wednesday
+      time: "13:00"
+    allow:
+      - dependency-type: direct
+    target-branch: "dev"
+    commit-message:
+      prefix: "[deps] "
+    labels:
+      - "dependencies"
+    groups:
+      version-updates:
+        applies-to: version-updates
