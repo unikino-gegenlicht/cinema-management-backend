@@ -1,6 +1,6 @@
-//go:build !debug
+//go:build debug
 
-package main
+package logging
 
 import (
 	"os"
@@ -11,9 +11,9 @@ import (
 
 var loggerConfig pterm.Logger = pterm.Logger{
 	TimeFormat: time.RFC3339,
-	Level:      pterm.LogLevelInfo,
-	Writer:     os.Stdout,
+	Level:      pterm.LogLevelDebug,
+	Formatter:  pterm.LogFormatterColorful,
 	ShowTime:   true,
-	Formatter:  pterm.LogFormatterJSON,
+	Writer:     os.Stdout,
 	MaxWidth:   pterm.GetTerminalWidth(),
 }
